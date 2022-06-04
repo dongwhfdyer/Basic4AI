@@ -4,10 +4,9 @@
 代码主要是copy https://www.pkudodo.com/2018/12/05/1-7/ 中的，许多命名尚未修改至统一风格
 '''
 
-
-import time
-import numpy as np
 from collections import defaultdict
+
+import numpy as np
 from sklearn.datasets import load_digits
 from tqdm import tqdm
 
@@ -33,15 +32,15 @@ class MaxEntropy:
         '''
         各参数初始化
         '''
-        self.train_xs = train_xs                        # 训练数据集
-        self.train_ys = train_ys                        # 训练标签集
-        self.test_xs = test_xs                        # 训练数据集
-        self.test_ys = test_ys                        # 训练标签集
-        self.class_count = len(set(self.test_ys))      # 标签取值数量
+        self.train_xs = train_xs  # 训练数据集
+        self.train_ys = train_ys  # 训练标签集
+        self.test_xs = test_xs  # 训练数据集
+        self.test_ys = test_ys  # 训练标签集
+        self.class_count = len(set(self.test_ys))  # 标签取值数量
         self.m = len(train_xs[0])  # 原始输入特征的数量，需要跟特征函数的数量区分开
         self.N = len(train_xs)  # 训练样本数目
         self.features, self.feature_count = self.get_features()  # 所有特征   特征函数数量
-        self.M = self.m                    # 假定任意样本中所有特征函数的和是固定值，简化IIS算法
+        self.M = self.m  # 假定任意样本中所有特征函数的和是固定值，简化IIS算法
         self.w = [0] * self.feature_count  # 所有特征的权重
         self.xy2id, self.id2xy = self.createSearchDict()  # 特征->id、id->特征 的对应字典
         self.Ep_xy = self.get_Ep_xy()  # 特征函数f(x, y)关于经验分布P_(x, y)的期望值
@@ -181,17 +180,16 @@ class MaxEntropy:
             # 使用的是IIS，所以设置sigma列表
             sigmaList = [0] * self.feature_count
             # 对于所有的n进行一次遍历
-            
+
             for j in range(self.feature_count):
                 # 依据“6.3.1 改进的迭代尺度法” 式6.34计算
                 sigmaList[j] = (1 / self.M) * np.log(self.Ep_xy[j] / Epxy[j])
             # 按照算法6.1步骤二中的（b）更新w
             self.w = [self.w[i] + sigmaList[i] for i in range(self.feature_count)]
 
-            if (i+1) % 5 == 0:
+            if (i + 1) % 5 == 0:
                 accuracy = self.test()
                 print('the accuracy is:%.4f' % accuracy)
-
 
     def predict(self, X):
         '''
@@ -221,9 +219,8 @@ class MaxEntropy:
 
 if __name__ == '__main__':
     features, targets = load_data()
-    
 
-    train_count = int(len(features)*0.8)
+    train_count = int(len(features) * 0.8)
 
     train_xs, train_ys = features[:train_count], targets[:train_count]
     test_xs, test_ys = features[train_count:], targets[train_count:]
@@ -235,5 +232,5 @@ if __name__ == '__main__':
     maxEnt.iis_train()
     # 开始测试
     print('start to test')
-    accuracy = maxEnt.test()    # 200轮准确率为86.39%
-    print('the accuracy is:%.4f'%accuracy)
+    accuracy = maxEnt.test()  # 200轮准确率为86.39%
+    print('the accuracy is:%.4f' % accuracy)

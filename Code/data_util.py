@@ -2,9 +2,11 @@
 提供一些数据处理的功能
 """
 
-from codecs import open
-import pandas as pd
 import re
+from codecs import open
+
+import pandas as pd
+
 
 def load_seq_label_corpus(path, make_vocab=True):
     '''
@@ -36,6 +38,7 @@ def load_seq_label_corpus(path, make_vocab=True):
     else:
         return word_lists, tag_lists
 
+
 def build_map(lists):
     maps = {}
     for list_ in lists:
@@ -44,12 +47,13 @@ def build_map(lists):
                 maps[e] = len(maps)
     return maps
 
+
 def load_text_cla_corpus(path):
     '''
     读取文本分类数据集
     '''
     df = pd.read_csv(path, sep='\t')
-    texts, labels = [],[] # 文本和对应类别
+    texts, labels = [], []  # 文本和对应类别
     for line in df.itertuples():
         text = re.sub(r"([,.!?])", r" \1 ", line.text)
         text = re.sub(" {2,}", " ", text)

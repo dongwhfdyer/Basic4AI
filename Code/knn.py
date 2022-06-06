@@ -13,6 +13,7 @@ from tqdm import tqdm
 class Node(object):
     '''
     树节点
+    One Node ,one data.
     '''
 
     def __init__(self, data, left, right, dim):
@@ -33,34 +34,41 @@ class KDTree(object):
         '''
         self.root = self.build_tree(datas, 0, datas.shape[1] - 1)  # 根节点
 
-    def build_tree(self, datas, cur_dim, max_dim):
+    def build_tree(self, datas, cur_dim, max_dim):  # max_dim means the dimension of the data feature
         '''
         构建kd树
         '''
         if len(datas) == 0:
             return
-        datas = datas[np.argsort(datas[:, cur_dim])]
+        new_datas = datas[np.argsort(datas[:, cur_dim])]  # current dimension. The split point is the median of the current dimension. So they used argsort to sort the data.
         mid = datas.shape[0] // 2
-        return Node(datas[mid], self.build_tree(datas[:mid], (cur_dim + 1) % max_dim, max_dim), \
+        return Node(datas[mid], self.build_tree(datas[:mid], (cur_dim + 1) % max_dim, max_dim),  # recursively build left and right subtree
                     self.build_tree(datas[mid + 1:], (cur_dim + 1) % max_dim, max_dim), cur_dim)
 
     def predict(self, x, k, lp_distance):
         '''
         使用kd树进行预测
+        k means class number
+        x means the test data waiting to be classified
         '''
-        top_k = [(-np.inf, None)] * k
+        top_k = [(-np.inf, None)] * k  # original k is 5
 
         # 递归访问节点
         def visit(node):
             if node is None:
                 return
-            dis_with_axis = x[node.dim] - node.data[node.dim]
-            visit(node.left if dis_with_axis < 0 else node.right)
+            ################################################## This two line will let the whole process start from the leaf node which is the nearst one.
+            dis_with_axis = x[node.dim] - node.data[node.dim]  # node.data[node.dim] is the median of the current dimension or it's called the first element of the current dimension.
+            visit(node.left if dis_with_axis < 0 else node.right)  # visit left subtree if x[node.dim] < node.data[node.dim]. It means that if the object data of current dimension is less than the current dimension's splitting point or median, then the object data is in the left subtree.
+            ##################################################
 
-            dis_with_node = lp_distance(x.reshape((1, -1)), node.data.reshape((1, -1))[:, :-1])[0]
-            heapq.heappushpop(top_k, (-dis_with_node, node.data[-1]))
+            dis_with_node = lp_distance(x.reshape((1, -1)), node.data.reshape((1, -1))[:, :-1])[0]  # calculate the distance between x and node.data. x.shape = (1, n), node.data.shape = (1, n+1). So the distance is calculated between x and node.data.
+            # For `heapq.heappushpop` if (***) is less than top_k heap, then do nothing. If (***) is larger than  the first element of top_k heap, then pop the first element and push the (***) into t  # if (***) is less than top_k heap, then do nothing. If (***) is larger than  the first element of top_k heap, then pop the first element and push the (***) into top_k heap.op_k heap.
+            # first example: (-inf, None)<(54,7)
+            heapq.heappushpop(top_k, (-dis_with_node, node.data[-1]))  # when compare the tuple, the first element has the higher priority. So, this line means push the the element with the smaller(it's done by "-") distance into top_k heap.
 
-            if -top_k[0][0] > abs(dis_with_axis):
+            # why there's "-", heapq.heappushpop() is a min heap. So, the first element is the smallest element. However and the above function heappushpop will only push when the element is larger than the first element of top_k heap.
+            if -top_k[0][0] > abs(dis_with_axis):  # if the distance is larger than the distance with axis, then visit right subtree.
                 visit(node.right if dis_with_axis < 0 else node.left)
 
         visit(self.root)
@@ -90,8 +98,12 @@ class KNN(object):
     def lp_distance(self, x1, x2):
         '''
         Lp距离
+        x1.shape can be (num_sample, feature_num)
+        x2.shape can be (1, feature_num)
+        p stands for the order of Lp
+        so it will calculate the distance between (each element in x1) and (x2)
         '''
-        dis = np.sum(np.abs(x1 - x2) ** self.p, -1) ** (1 / self.p)
+        dis = np.sum(np.abs(x1 - x2) ** self.p, -1) ** (1 / self.p)  # |x1-x2|^p
         return dis
 
     def liner_test(self, test_xs):
@@ -101,9 +113,9 @@ class KNN(object):
         predict_ys = []
         print('Testing.')
         for test_x in tqdm(test_xs):
-            dis = self.lp_distance(self.train_xs, test_x.reshape((1, -1)))
-            top_k_index = dis.argsort()[:self.k]
-            top_k = [self.train_ys[index] for index in top_k_index]
+            dis = self.lp_distance(self.train_xs, test_x.reshape((1, -1)))  # test_x.shape = (1, feature_num). test_x is only one sample. train_xs.shape = (num_sample, feature_num)
+            top_k_index = dis.argsort()[:self.k]  # it will sort the distance and return the index of the top k nearest samples.
+            top_k = [self.train_ys[index] for index in top_k_index]  # it will return the label of the top k nearest samples.
             predict_y = self.vote(top_k)
             predict_ys.append(predict_y)
         predict_ys = np.array(predict_ys)
@@ -114,7 +126,7 @@ class KNN(object):
         kd树搜索测试
         '''
         if self.kdtree is None:
-            self.kdtree = KDTree(np.concatenate([self.train_xs, self.train_ys.reshape((-1, 1))], -1))
+            self.kdtree = KDTree(np.concatenate([self.train_xs, self.train_ys.reshape((-1, 1))], -1))  # shape = [1437,65]
 
         predict_ys = []
         for test_x in tqdm(test_xs):
@@ -131,7 +143,7 @@ class KNN(object):
         '''
         count = {}
         max_freq, predict_y = 0, 0
-        for key in top_k:
+        for key in top_k:  # if in the original example, we assume top_k has 5 elements. Then they will vote for the 5 classes.
 
             count[key] = count.get(key, 0) + 1
 

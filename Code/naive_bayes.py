@@ -49,14 +49,19 @@ class NaiveBayes(object):
         if self.type == 'bernoulli':  # 对于伯努利朴素贝叶斯，后验概率为 包含词w且属于类别c的样本/属于类别c的样本
             for i, y in enumerate(unique_ys):
                 sub_xs = train_xs[train_ys == y]
-                self.likelihood_probs[:, i] = (np.sum(sub_xs, axis=0) + self._lambda) \
-                                              / (counts[i] + 2 * self._lambda)
+                self.likelihood_probs[:, i] = (np.sum(sub_xs, axis=0) + self._lambda) / (counts[i] + 2 * self._lambda)
 
         else:  # 对于多项式朴素贝叶斯，后验概率为 词w在属于类别c的样本中出现的次数/属于类别c的样本的总词数
             for i, y in enumerate(unique_ys):
                 sub_xs = train_xs[train_ys == y]
-                self.likelihood_probs[:, i] = (np.sum(sub_xs, axis=0) + self._lambda) \
-                                              / (np.sum(sub_xs) + m * self._lambda)
+                sub_sum = np.sum(sub_xs, axis=0)
+                sub_sum2 = np.sum(sub_sum)
+                ss = 1 / (sub_sum2 + 1)
+                likelihood_probs_k = sub_sum + ss
+                ll= (np.sum(sub_xs, axis=0) + self._lambda) / (np.sum(sub_xs) + m * self._lambda)
+
+                self.likelihood_probs[:, i] = (np.sum(sub_xs, axis=0) + self._lambda) / (np.sum(sub_xs) + m * self._lambda)
+                # self.likelihood_probs[:, i] = (np.sum(sub_xs, axis=0) + self._lambda) / (np.sum(sub_xs) + m * self._lambda)
 
         # 因为伯努利朴素贝叶斯在预测阶段还需要计算 不包含词w且属于类别c的概率，所以先进行计算并取对数存储
         if self.type == 'bernoulli':

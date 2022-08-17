@@ -118,11 +118,12 @@ class GMM(object):
         e = 1e-5  # 迭代变化不超过此值时停止
         pdfs = np.zeros(((n, K)))  # 各个分模型对观测数据的响应度  n * K
         for _ in range(max_step):
-            for k in range(K):
-                pdfs[:, k] = alphas[k] * multivariate_normal.pdf(X, mus[k], np.diag(vars[k]))
-            pdfs = pdfs / np.sum(pdfs, 1, keepdims=True)
+            for k in range(K):  # iterate over every possible model. Each model contains mean and variance.
+                # `multivariate_normal.pdf` is to calculate the probability of each item of X in model whose parameters is [mean,var].
+                pdfs[:, k] = alphas[k] * multivariate_normal.pdf(X, mus[k], np.diag(vars[k]))  # pdfs's shape is [item_num,possible_model_num]
+            pdfs = pdfs / np.sum(pdfs, 1, keepdims=True)  # now the shape is [item_num,]
 
-            pdf_sums = np.sum(pdfs, 0)
+            pdf_sums = np.sum(pdfs, 0)  # now the shape is [1,]
 
             # 根据响应度更新参数
             new_alphas, new_mus, new_vars = [], [], []
@@ -180,7 +181,7 @@ if __name__ == '__main__':
     gmm = GMM()
     # 第一簇的数据
     num1, mu1, var1 = 400, [0.5, 0.5], [1, 3]
-    X1 = np.random.multivariate_normal(mu1, np.diag(var1), num1)
+    X1 = np.random.multivariate_normal(mu1, np.diag(var1), num1)  # It will generate two distribution with same mean 0.5 which has num1's number data. The covariance matrix is np.diag(var1).
     # 第二簇的数据
     num2, mu2, var2 = 600, [5.5, 2.5], [2, 2]
     X2 = np.random.multivariate_normal(mu2, np.diag(var2), num2)
@@ -190,7 +191,11 @@ if __name__ == '__main__':
     # 生成数据
     X = gmm.gen_data(params)
     K = 3
+    # 1/K represents alpha_k in the formula in book page 183. [0,-1] is the two-dim data's mean. [1,1] is the two-dim data's variance.
+    # Notice that the init_params is different from the original data distribution.
+    # init_params = [[1 / K, [0.5, 0.5], [1, 1]], [1 / K, [6, 0], [1, 1]], [1 / K, [0, 9], [1, 1]], [1 / K, [0, 9], [1, 1]]]
     init_params = [[1 / K, [0, -1], [1, 1]], [1 / K, [6, 0], [1, 1]], [1 / K, [0, 9], [1, 1]]]
+    # init_params = [[1 / K, [0, -1], [1, 1]], [1 / K, [6, 0], [1, 1]], [1 / K, [0, 9], [1, 1]]]
     alphas, mus, vars = gmm.estimate_params(X, K, init_params, max_step=100)
     # 画图
     plot_clusters(X, mus, vars, [mu1, mu2, mu3], [var1, var2, var3])

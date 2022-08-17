@@ -42,23 +42,26 @@ class NaiveBayes(object):
         self.unique_ys = unique_ys
         # 先验概率
         denominator = n + self._lambda * len(unique_ys)  # 先验概率的分母
-        self.prior_probs = np.log2((counts + self._lambda) / denominator)
+        self.prior_probs = np.log2((counts + self._lambda) / denominator)  # shape = (len(unique_ys),)
 
         # 似然概率
-        self.likelihood_probs = np.zeros((m, len(unique_ys)))
+        self.likelihood_probs = np.zeros((m, len(unique_ys)))  # shape = (m, len(unique_ys))
         if self.type == 'bernoulli':  # 对于伯努利朴素贝叶斯，后验概率为 包含词w且属于类别c的样本/属于类别c的样本
             for i, y in enumerate(unique_ys):
                 sub_xs = train_xs[train_ys == y]
                 self.likelihood_probs[:, i] = (np.sum(sub_xs, axis=0) + self._lambda) / (counts[i] + 2 * self._lambda)
 
         else:  # 对于多项式朴素贝叶斯，后验概率为 词w在属于类别c的样本中出现的次数/属于类别c的样本的总词数
+
+            # the assumption is that the words code is one-hot encoding. So the data in each feature is whether 0 or 1.
+            # Every iteration is to calculate the likelihood for each class. like the first iteration, it's calculating likelihood_y1 = [w1,...,wn]/total_feature_num
             for i, y in enumerate(unique_ys):
                 sub_xs = train_xs[train_ys == y]
-                sub_sum = np.sum(sub_xs, axis=0)
-                sub_sum2 = np.sum(sub_sum)
-                ss = 1 / (sub_sum2 + 1)
+                sub_sum = np.sum(sub_xs, axis=0)  # Shape = [feature_num,]. Intuitively, it represents the frequency of the each feature in the whole training set.
+                sub_sum2 = np.sum(sub_sum)  # shape = [total_feature_num,] the total appearance number of the feature in the whole training set.
+                ss = 1 / (sub_sum2 + 1) # one scalar.
                 likelihood_probs_k = sub_sum + ss
-                ll= (np.sum(sub_xs, axis=0) + self._lambda) / (np.sum(sub_xs) + m * self._lambda)
+                ll = (np.sum(sub_xs, axis=0) + self._lambda) / (np.sum(sub_xs) + m * self._lambda)
 
                 self.likelihood_probs[:, i] = (np.sum(sub_xs, axis=0) + self._lambda) / (np.sum(sub_xs) + m * self._lambda)
                 # self.likelihood_probs[:, i] = (np.sum(sub_xs, axis=0) + self._lambda) / (np.sum(sub_xs) + m * self._lambda)
@@ -90,7 +93,8 @@ class NaiveBayes(object):
             log_probs = np.dot(x, self.likelihood_probs) + np.dot(1 - x, self.negative_likelihood_probs)
         else:
             log_probs = np.dot(x, self.likelihood_probs)
-        log_probs = log_probs.reshape((-1,)) + self.prior_probs
+        log_probs = log_probs.reshape((-1,)) + self.prior_probs # the prior is kinda like a bias term.
+
         return self.unique_ys[np.argmax(log_probs)]
 
 

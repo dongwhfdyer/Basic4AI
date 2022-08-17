@@ -75,7 +75,7 @@ class DecisionTree(object):
 
         # CART 对于分类问题，保存分割后的最低基尼不纯度、分割特征、特征取值
         # CART 对于回归问题，保存分割后的最低平方误差、分割特征、特征阈值
-        cart_split_cache = [float('inf'), -1, -1]
+        cart_split_cache = [float('inf'), -1, -1] # 分割后的最低基尼不纯度、分割特征、特征阈值
 
         # 随机选取max_features个属性
         if self.max_features != -1 and self.max_features < len(attr_type):
@@ -83,8 +83,8 @@ class DecisionTree(object):
         else:
             sample_attr_incides = range(m)
 
-        for i in sample_attr_incides:
-            if attr_type[i] == 0:
+        for i in sample_attr_incides:  # iterate every attribute
+            if attr_type[i] == 0:  # if discrete
                 uniques, counts = np.unique(datas[:, i], return_counts=True)
                 if self.type in ['ID3', 'C4.5']:
                     # 针对每一个属性计算分割后的信息熵
@@ -116,14 +116,14 @@ class DecisionTree(object):
                 if self.type == 'CART':
                     _min, _max = np.min(datas[:, i]), np.max(datas[:, i])
                     step = (_max - _min) / self.split_count  # 步长
-                    # 按步长遍历该属性
+                    # 按步长遍历该属性 and choose the best split
                     for j in range(1, self.split_count):
                         threshold = _min + j * step
                         count = np.sum(datas[:, i] <= threshold)  # 左子树样本个数
                         if self.predict_type == 'classification':
                             # 计算使用该取值分割后的基尼不纯度
                             metric = (count / n) * self._cal_gini(targets[datas[:, i] <= threshold]) + (1 - count / n) * self._cal_gini(targets[datas[:, i] > threshold])
-                        else:
+                        else: # regression
                             # 计算使用该取值分割后的平方误差
                             metric = self._cal_square_error(targets[datas[:, i] <= threshold]) + self._cal_square_error(targets[datas[:, i] > threshold])
                         if metric < cart_split_cache[0]:

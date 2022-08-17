@@ -9,6 +9,9 @@ from tqdm import tqdm
 
 def build_base_classifier(train_xs, train_ys, weights, attr_type, split_count=10):
     '''
+    In this function, we only choose one attribute to split the data. Also, the threshold is calculated here.
+    Weights is the most important parameter in this function. Different weights will lead to different classifiers.
+    Then, different classifiers will combine into one classifier.
     构建决策树桩作为基分类器,N 样本数目 m特征数目
     train_xs    训练样本特征 np.array (N,m)
     train_ys    训练样本标签 np.array (N,) {-1,+1}
@@ -95,8 +98,7 @@ class AdaBoost(object):
         self.classifiers = []  # 基分类器以及其权重
         self.attr_type = None  # 各项特征是离散还是连续
 
-    def train(self, train_xs, train_ys, attr_type, test_xs=None, test_ys=None, \
-              base_count=100, test_freq=50):
+    def train(self, train_xs, train_ys, attr_type, test_xs=None, test_ys=None, base_count=100, test_freq=50):
         '''
         训练函数
         train_xs 训练数据特征
@@ -113,13 +115,12 @@ class AdaBoost(object):
 
         weights = np.ones((N,)) / N  # 初始权重为均匀分布
 
-        for i in tqdm(range(base_count)):  # 前向训练
-            error, attr_index, select_threshold, side, predict_ys = build_base_classifier(train_xs, \
-                                                                                          train_ys, weights, attr_type)
+        for i in tqdm(range(base_count)):  # 前向训练 base_count 个基分类器
+            error, attr_index, select_threshold, side, predict_ys = build_base_classifier(train_xs, train_ys, weights, attr_type)
 
-            # 根据公式更新权重
-            alpha = 0.5 * np.log((1 - error) / error)
-            weights = weights * np.exp(-alpha * (predict_ys * train_ys))
+            # 根据公式更新权重 p
+            alpha = 0.5 * np.log((1 - error) / error)  # p157 8.2
+            weights = weights * np.exp(-alpha * (predict_ys * train_ys))  # p157 8.4
             weights = weights / np.sum(weights)
 
             self.classifiers.append((attr_index, select_threshold, side, alpha))  # 添加基分类器
@@ -161,6 +162,10 @@ class AdaBoost(object):
 
 
 if __name__ == '__main__':
+    # boston = load_boston()
+    # features = boston.data
+    # targets = (boston.target).astype(int)
+
     # 加载sklearn自带的手写数字识别数据集
     digits = load_digits()
     features = digits.data
@@ -182,6 +187,6 @@ if __name__ == '__main__':
 
     attr_type = [1] * train_xs.shape[1]
 
-    base_count = 500
+    base_count = 1000
 
     adaboost.train(train_xs, train_ys, attr_type, test_xs, test_ys, base_count=base_count)

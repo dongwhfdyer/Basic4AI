@@ -19,7 +19,7 @@ def load_data():
 
     digits = load_digits()
     xs = digits.data.tolist()
-    ys = (digits.target > 4).astype(int).tolist()
+    ys = (digits.target > 4).astype(int).tolist()  # simplify this problem into binary classification
     return xs, ys
 
 
@@ -60,27 +60,28 @@ class MaxEntropy:
         for i in range(self.N):
 
             # 初始化公式中的P(y|x)列表
-            Pwxy = self.calcPwy_x(self.train_xs[i])
+            Pwxy = self.calcPwy_x(self.train_xs[i])  # [P(y1|x), P(y2|x),,,] in every sample. Kuhn's understanding is that it's model's result.
 
             for feature in range(self.m):
                 for y in range(self.class_count):
                     if (self.train_xs[i][feature], y) in self.features[feature]:
                         id = self.xy2id[feature][(
                             self.train_xs[i][feature], y)]
-                        Epxy[id] += (1 / self.N) * Pwxy[y]
+                        Epxy[id] += (1 / self.N) * Pwxy[y]  # += one constant * [P(y1|x), P(y2|x),,,] .kuhn's understanding: it represents the contribution of each feature to result.
+        # Epxy = [Ep(y|x_id_1), Ep(y|x_id_2),,,]
         return Epxy
 
     def get_Ep_xy(self):
-        '''
-        计算特征函数f(x, y)关于经验分布P_(x, y)的期望值（下划线表示P上方的横线，
-        同理Ep_xy中的“_”也表示p上方的横线）
+        """
+        This function is to calculate each feature's probability in the training set/P(Y|X).
+        计算特征函数f(x, y)关于经验分布P_(x, y)的期望值（下划线表示P上方的横线，同理Ep_xy的“_”也表示p上方的横线）
         即“6.2.2 最大熵的定义”中第一个期望（82页最下方那个式子）
         :return: 计算得到的Ep_xy
-        '''
-        # 初始化Ep_xy列表，长度为n
+        """
+        # 初始化Ep_xy列表，长度为n feature_count is the number of (x,y) pairs
         Ep_xy = [0] * self.feature_count
         # 遍历每一个特征
-        for feature in range(self.m):
+        for feature in range(self.m):  # self.m == 64
             # 遍历每个特征中的(x, y)对
             for (x, y) in self.features[feature]:
                 # 获得其id
@@ -94,7 +95,7 @@ class MaxEntropy:
     def createSearchDict(self):
         '''
         创建查询字典
-        xy2idDict：通过(x,y)对找到其id,所有出现过的xy对都有一个id
+        xy2idDict：通过(x,y)对找到其id, ⭐⭐⭐⭐所有出现过的xy对都有一个id⭐⭐⭐⭐
         id2xyDict：通过id找到对应的(x,y)对
         '''
         # 设置xy搜多id字典
@@ -111,13 +112,13 @@ class MaxEntropy:
         # 设置缩影，其实就是最后的id
         index = 0
         # 对特征进行遍历
-        for feature in range(self.m):
+        for fea_index in range(self.m):
             # 对出现过的每一个(x, y)对进行遍历
             # fixy：内部存放特征数目个字典，对于遍历的每一个特征，单独读取对应字典内的(x, y)对
-            for (x, y) in self.features[feature]:
+            for (x, y) in self.features[fea_index]:
                 # 将该(x, y)对存入字典中，要注意存入时通过[feature]指定了存入哪个特征内部的字典
                 # 同时将index作为该对的id号
-                xy2idDict[feature][(x, y)] = index
+                xy2idDict[fea_index][(x, y)] = index
                 # 同时在id->xy字典中写入id号，val为(x, y)对
                 id2xyDict[index] = (x, y)
                 # id加一
@@ -131,6 +132,7 @@ class MaxEntropy:
         :return:
         '''
         n = 0
+        # take minst dataset for example: fixyDict is a list of dict. Length is the feature number which is 28*28. Each dict is the (x, y) pair. x is the value in the corresponding position and y is the value of that number.
         # 建立特征数目个字典，属于不同特征的(x, y)对存入不同的字典中，保证不被混淆
         fixyDict = [defaultdict(int) for i in range(self.m)]
         # 遍历训练集中所有样本
@@ -152,16 +154,19 @@ class MaxEntropy:
         :param X: 要计算的样本X（一个包含全部特征的样本）
         :param y: 该样本的标签
         :return: 计算得到的Pw(Y|X)
+        kuhn's understanding:
+        What we already know in this function: self.w self.feature. Or we could say, we already extract the features from the training data.
+        it returns [probability of y being 0, probability of y being 1] It's part of the model inference.
         '''
         # 分子
-        numerators = [0] * self.class_count
+        numerators = [0] * self.class_count  # if it's two class, it's [0, 0].
 
         # 对每个特征进行遍历
         for i in range(self.m):
             for j in range(self.class_count):
-                if (x[i], j) in self.xy2id[i]:
+                if (x[i], j) in self.xy2id[i]:  # if the statement is true, feature is useful which is already recorded in the feature set of the model.
                     index = self.xy2id[i][(x[i], j)]
-                    numerators[j] += self.w[index]
+                    numerators[j] += self.w[index]  # different feature has different weight.
 
         # 计算分子的指数
         numerators = np.exp(numerators)
@@ -176,14 +181,14 @@ class MaxEntropy:
         for i in tqdm(range(iter)):
 
             # 计算“6.2.3 最大熵模型的学习”中的第二个期望（83页最上方哪个）
-            Epxy = self.get_Epxy()
+            Epxy = self.get_Epxy()  # Epxy = [Ep(y|x_id_1), Ep(y|x_id_2),,,] As I see it, it stores every feature's contribution to y's each value's probability.
             # 使用的是IIS，所以设置sigma列表
             sigmaList = [0] * self.feature_count
             # 对于所有的n进行一次遍历
 
             for j in range(self.feature_count):
-                # 依据“6.3.1 改进的迭代尺度法” 式6.34计算
-                sigmaList[j] = (1 / self.M) * np.log(self.Ep_xy[j] / Epxy[j])
+                # 依据“6.3.1 改进的迭代尺度法” 式6.34计算 p106
+                sigmaList[j] = (1 / self.M) * np.log(self.Ep_xy[j] / Epxy[j])  # the length of self.Ep_xy is the feature_count.
             # 按照算法6.1步骤二中的（b）更新w
             self.w = [self.w[i] + sigmaList[i] for i in range(self.feature_count)]
 
